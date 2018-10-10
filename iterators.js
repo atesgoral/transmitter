@@ -25,20 +25,11 @@ class PolarSpiralIterator {
   constructor(w, h) {
     const radius = Math.max(w, h) / 2;
 
-    let d = 0;
-    let av = 1 / radius;
-
-    // need r rotations
-
-    //let a = 0;
-    /*
-    max av = 1 / r
-
-    half av = 2 / r
-    */
+    // @todo write dis codes
 
     this.next = () => {
-
+      // @todo I can has scripts
+      return { x: Math.random() * w | 0, y: Math.random() * h | 0 };
     }
   }
 }
