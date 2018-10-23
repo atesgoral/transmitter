@@ -72,10 +72,14 @@ class Progress {
   srcCtx.drawImage(img, 0, 0, srcCanvas.width, srcCanvas.height);
 
   // const srcIterator = new ScanlineIterator(srcCanvas.width, srcCanvas.height);
+  // const srcIterator = new ZigzagIterator(srcCanvas.width, srcCanvas.height);
+  // const srcIterator = new RectangularSpiralIterator(srcCanvas.width, srcCanvas.height);
   const srcIterator = new PolarSpiralIterator(srcCanvas.width, srcCanvas.height);
   const progress = new Progress(progCanvas, srcCanvas, srcIterator);
   const srcStream = new PixelStream(srcCanvas, progress.iterator);
   // const destIterator = new ScanlineIterator(destCanvas.width, destCanvas.height);
+  // const destIterator = new ZigzagIterator(destCanvas.width, destCanvas.height);
+  // const destIterator = new RectangularSpiralIterator(destCanvas.width, destCanvas.height);
   const destIterator = new PolarSpiralIterator(destCanvas.width, destCanvas.height);
   const destStream = new PixelStream(destCanvas, destIterator);
 
