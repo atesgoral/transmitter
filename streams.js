@@ -62,3 +62,60 @@ class AudioStream {
     };
   }
 }
+
+class BypassStream {
+  constructor() {
+    let src = null;
+
+    this.read = (count) => src.read(count);
+
+    // @todo pipe on other end?
+    this.pipeFrom = (stream) => {
+      src = stream;
+    };
+  }
+}
+
+class DerivativeStream {
+  constructor() {
+    let src = null;
+    let prev = 0; // @todo reset
+
+    this.read = (count) => {
+      const chunk = src.read(count);
+
+      return chunk.map((n) => {
+        const d = n - prev;
+        prev = n;
+        return d / 2;
+      });
+    };
+
+    // @todo pipe on other end?
+    this.pipeFrom = (stream) => {
+      src = stream;
+    };
+  }
+}
+
+class IntegralStream {
+  constructor() {
+    let src = null;
+    let prev = 0; // @todo reset
+
+    this.read = (count) => {
+      const chunk = src.read(count);
+
+      return chunk.map((n) => {
+        const i = n + prev;
+        prev = i;
+        return i * 2;
+      });
+    };
+
+    // @todo pipe on other end?
+    this.pipeFrom = (stream) => {
+      src = stream;
+    };
+  }
+}

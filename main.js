@@ -77,6 +77,16 @@ class Progress {
   const srcIterator = new PolarSpiralIterator(srcCanvas.width, srcCanvas.height);
   const progress = new Progress(progCanvas, srcCanvas, srcIterator);
   const srcStream = new PixelStream(srcCanvas, progress.iterator);
+  // const bpStream = new BypassStream();
+  // bpStream.pipeFrom(srcStream);
+  const dStream = new DerivativeStream();
+  dStream.pipeFrom(srcStream);
+  const d2Stream = new DerivativeStream();
+  d2Stream.pipeFrom(dStream);
+  const iStream = new IntegralStream();
+  iStream.pipeFrom(d2Stream);
+  const i2Stream = new IntegralStream();
+  i2Stream.pipeFrom(iStream);
   // const destIterator = new ScanlineIterator(destCanvas.width, destCanvas.height);
   // const destIterator = new ZigzagIterator(destCanvas.width, destCanvas.height);
   // const destIterator = new RectangularSpiralIterator(destCanvas.width, destCanvas.height);
@@ -103,7 +113,8 @@ class Progress {
     // processorNode.connect(audioCtx.destination);
 
   setInterval(() => {
-    const chunk = srcStream.read(2048);
+    const chunk = i2Stream.read(2048);
+    //const chunk = srcStream.read(2048);
     destStream.write(chunk);
   }, 100);
 })();
