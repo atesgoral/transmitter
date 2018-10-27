@@ -1,0 +1,77 @@
+<script>
+  const queueingStrategy = {
+    highWaterMark: 1,
+    size(chunk) {
+      console.log('size', chunk.length);
+      return chunk.length;
+    }
+  };
+
+  // @todo try subclassing
+  const readable = new ReadableStream({
+    //type: 'bytes',
+    start(controller) {
+      console.log('r start', controller);
+
+      controller.enqueue([ 0.0, 0.1, 0.2 ]);
+      controller.enqueue([ 0.3, 0.4, 0.5 ]);
+      controller.close();
+    },
+    // pull(controller) {
+    //   console.log('pull', controller);
+    // },
+    cancel(reason) {
+      console.log('r cancel', reason);
+    }
+  // }, queueingStrategy);
+  });
+
+  const transform = (() => {
+    // const writable = new WritableStream({
+    //   write(chunk, controller) {
+    //     console.log('x write', chunk, controller);
+    //   }
+    // });
+
+    // const readable = new ReadableStream({
+    //   start(controller) {
+    //     console.log('x start', controller);
+    //   }
+    // });
+
+    return new TransformStream({
+      // start(controller) {
+      //   console.log('x start');
+      // },
+      transform(chunk, controller) {
+        console.log('x transform');
+        controller.enqueue(chunk);
+      },
+      // flush(controller) {
+      //   console.log('x flush');
+      // }
+    });
+  })();
+
+  readable.pipeThrough(transform);
+
+  const reader = transform.readable.getReader();
+
+  console.log('reader', reader);
+
+  async function drain() {
+    do {
+      let { done, value: chunk } = await reader.read();
+
+      if (done) {
+        break;
+      }
+
+      console.log('got chunk', chunk);
+    } while (true);
+
+    console.log('done!');
+  }
+
+  drain();
+</script>
