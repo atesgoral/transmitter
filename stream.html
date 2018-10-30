@@ -1,77 +1,126 @@
 <script>
-  const queueingStrategy = {
-    highWaterMark: 1,
-    size(chunk) {
-      console.log('size', chunk.length);
-      return chunk.length;
+  const sineWaveStream = (() => {
+    let s = 0;
+
+    function pull(controller) {
+      controller.enqueue(Math.sin(s));
+      s += 0.1;
     }
-  };
 
-  // @todo try subclassing
-  const readable = new ReadableStream({
-    //type: 'bytes',
-    start(controller) {
-      console.log('r start', controller);
-
-      controller.enqueue([ 0.0, 0.1, 0.2 ]);
-      controller.enqueue([ 0.3, 0.4, 0.5 ]);
-      controller.close();
-    },
-    // pull(controller) {
-    //   console.log('pull', controller);
-    // },
-    cancel(reason) {
-      console.log('r cancel', reason);
-    }
-  // }, queueingStrategy);
-  });
-
-  const transform = (() => {
-    // const writable = new WritableStream({
-    //   write(chunk, controller) {
-    //     console.log('x write', chunk, controller);
-    //   }
-    // });
-
-    // const readable = new ReadableStream({
-    //   start(controller) {
-    //     console.log('x start', controller);
-    //   }
-    // });
-
-    return new TransformStream({
-      // start(controller) {
-      //   console.log('x start');
-      // },
-      transform(chunk, controller) {
-        console.log('x transform');
-        controller.enqueue(chunk);
-      },
-      // flush(controller) {
-      //   console.log('x flush');
-      // }
+    return new ReadableStream({
+      pull
+    }, {
+      // highWaterMark: 1024
     });
   })();
 
-  readable.pipeThrough(transform);
+  let debugBuffer = null;
 
-  const reader = transform.readable.getReader();
+  const audioOutputStream = (() => {
+    const AUDIO_WORKLET_RENDER_QUANTUM_SIZE = 128;
 
-  console.log('reader', reader);
+    let buffer = new Float32Array(AUDIO_WORKLET_RENDER_QUANTUM_SIZE);
+    let waterMark = 0;
+    let bufferIdx = 0;
+    let bufferConsumer = null;
+    let uncork = null;
 
-  async function drain() {
-    do {
-      let { done, value: chunk } = await reader.read();
+    function start(controller) {
+      const context = new AudioContext();
 
-      if (done) {
-        break;
+      return context.audioWorklet
+        .addModule('processor.js')
+        .then(() => {
+          bufferConsumer = new AudioWorkletNode(context, 'buffer-consumer');
+
+          bufferConsumer.port.onmessage = (message) => {
+            if (message.data === 'consumed') {
+              waterMark--;
+
+              if (waterMark < 2 ** 12 && uncork) {
+                uncork();
+                uncork = null;
+              }
+            }
+          };
+
+          const scriptNode = context.createScriptProcessor(1024, 1, 1);
+
+          scriptNode.onaudioprocess = function(audioProcessingEvent) {
+            const inputBuffer = audioProcessingEvent.inputBuffer;
+            const inputData = inputBuffer.getChannelData(0);
+            debugBuffer = inputData;
+          };
+
+          bufferConsumer.connect(scriptNode);
+          scriptNode.connect(context.destination);
+          bufferConsumer.connect(context.destination);
+        });
+    }
+
+    function write(sample, controller) {
+      // console.log('w write', sample);
+
+      buffer[bufferIdx++] = sample;
+
+      if (bufferIdx === buffer.length) {
+        bufferConsumer.port.postMessage([ buffer ]);
+        waterMark++;
+        buffer = new Float32Array(AUDIO_WORKLET_RENDER_QUANTUM_SIZE);
+        bufferIdx = 0;
+
+        if (waterMark > 2 ** 13) {
+          return new Promise((resolve) => uncork = resolve);
+        }
+      }
+    }
+
+    return new WritableStream({
+      start,
+      write
+    });
+  })();
+
+  sineWaveStream.pipeTo(audioOutputStream);
+
+  window.addEventListener('load', () => {
+    c.width = c.clientWidth;
+    c.height = c.clientHeight;
+
+    function plot() {
+      requestAnimationFrame(plot);
+
+      if (!debugBuffer) {
+        return;
       }
 
-      console.log('got chunk', chunk);
-    } while (true);
+      c.width |= 0;
 
-    console.log('done!');
-  }
+      const x = c.getContext('2d');
+      x.translate(0, c.height / 2);
 
-  drain();
+      x.fillStyle = 'white';
+
+      const w = c.width / debugBuffer.length;
+
+      for (let i = 0; i < debugBuffer.length; i++) {
+        x.fillRect(i * w, debugBuffer[i] * c.height / 2, w, 1);
+      }
+    }
+
+    requestAnimationFrame(plot);
+  });
 </script>
+<canvas id="c"></canvas>
+<style>
+  body {
+    background: black;
+    padding: 0;
+    margin: 0;
+  }
+  canvas {
+    width: 100%;
+    height: 256px;
+    background: #222;
+  }
+</style>
