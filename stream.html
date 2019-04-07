@@ -87,19 +87,33 @@
     c.width = c.clientWidth;
     c.height = c.clientHeight;
 
-    function plot() {
+    let epoch = null;
+
+    function plot(t) {
       requestAnimationFrame(plot);
 
-      if (!debugBuffer) {
-        return;
+      if (epoch === null) {
+        epoch = t;
       }
+
+      const elapsed = t - epoch;
 
       c.width |= 0;
 
       const x = c.getContext('2d');
       x.translate(0, c.height / 2);
 
-      x.fillStyle = 'white';
+      x.fillStyle = '#666';
+      x.fillRect(-0.5, 0, c.width, 1);
+
+      if (!debugBuffer) {
+        return;
+      }
+
+      x.fillStyle = '#0ff';
+      x.fillRect(elapsed % c.width, - c.height / 2, 1, c.height);
+
+      x.fillStyle = '#eee';
 
       const w = c.width / debugBuffer.length;
 
@@ -111,7 +125,6 @@
     requestAnimationFrame(plot);
   });
 </script>
-<canvas id="c"></canvas>
 <style>
   body {
     background: black;
@@ -124,3 +137,5 @@
     background: #222;
   }
 </style>
+<canvas id="c"></canvas>
+<pre id="log"></pre>
